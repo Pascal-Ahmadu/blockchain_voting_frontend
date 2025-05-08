@@ -6,15 +6,50 @@ export default defineConfig({
   plugins: [
     react(),
     nodePolyfills({
-      protocolImports: true
+      // Whether to polyfill `node:` protocol imports.
+      protocolImports: true,
+      // Polyfills for Node.js core modules
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
     })
   ],
-  build: {
-    rollupOptions: {
-      external: ['web3']
-    }
+  resolve: {
+    alias: {
+      // This helps with modules that expect Node.js environments
+      process: 'process/browser',
+      stream: 'stream-browserify',
+      zlib: 'browserify-zlib',
+      util: 'util',
+      http: 'stream-http',
+      https: 'https-browserify',
+      os: 'os-browserify/browser',
+      crypto: 'crypto-browserify',
+      path: 'path-browserify',
+    },
   },
   optimizeDeps: {
-    include: ['web3']
+    include: ['web3', 'web3-utils', 'web3-core'],
+    esbuildOptions: {
+      // Node.js global to browser globalThis
+      define: {
+        global: 'globalThis',
+      },
+    },
+  },
+  build: {
+    sourcemap: true,
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'web3': ['web3'],
+        }
+      }
+    }
   }
 })

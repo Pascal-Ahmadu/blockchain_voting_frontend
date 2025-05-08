@@ -45,7 +45,7 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
     rollupOptions: {
-      external: ['web3'], // Move this line up from inside output
+      external: ['web3'], // Add external here
       output: {
         manualChunks: {
           'web3': ['web3'],

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Web3 from 'web3/dist/web3.min.js';
 import { getNonce, verifySignature, checkAuth, clearSession } from "../utils/api";
 
 const ConnectWallet = ({ onLogin }) => {
@@ -63,8 +62,8 @@ const ConnectWallet = ({ onLogin }) => {
     setError("");
 
     try {
-      // Initialize Web3 with the injected provider
-      const web3 = new Web3(window.ethereum);
+      // Use global Web3 from CDN
+      const web3 = new window.Web3(window.ethereum);
       
       // Request account access
       const accounts = await web3.eth.requestAccounts();

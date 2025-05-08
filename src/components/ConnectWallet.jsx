@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import Web3 from "web3";
+// Remove the Web3 import, we'll use the global one from CDN
 import { getNonce, verifySignature, checkAuth, clearSession } from "../utils/api";
 
 const ConnectWallet = ({ onLogin }) => {
@@ -12,7 +12,6 @@ const ConnectWallet = ({ onLogin }) => {
 
   const navigate = useNavigate();
 
-  // Check if user is already authenticated
   useEffect(() => {
     const checkAuthentication = async () => {
       try {
@@ -51,9 +50,21 @@ const ConnectWallet = ({ onLogin }) => {
     checkAuthentication();
   }, [onLogin, navigate]);
 
-  // Connect to wallet and authenticate
+  useEffect(() => {
+    const verifySession = async () => {
+      try {
+        await checkAuth();
+      } catch (error) {
+        // If session verification fails, redirect to login
+        navigate('/');
+      }
+    };
+    
+    verifySession();
+  }, [navigate]);
+
   const connectWallet = async () => {
-    if (typeof window.ethereum === 'undefined') {
+    if (!window.ethereum) {
       setError("Please install MetaMask or another Web3 wallet.");
       return;
     }
@@ -63,28 +74,22 @@ const ConnectWallet = ({ onLogin }) => {
     setError("");
 
     try {
-      // Initialize Web3 with the injected provider
-      const web3 = new Web3(window.ethereum);
-      
-      // Request account access
+      // Use the global Web3 instance from the CDN
+      const web3 = new window.Web3(window.ethereum);
       const accounts = await web3.eth.requestAccounts();
       const walletAddress = accounts[0];
 
       setMessage(`Wallet connected: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`);
       
-      // Get authentication nonce from server
       setMessage("Requesting authentication nonce...");
       const nonceResponse = await getNonce(walletAddress);
       const nonce = nonceResponse.data.nonce;
 
-      // Create the message to sign
       const message = `Sign this message to authenticate: ${nonce}`;
       setMessage("Please sign the message in your wallet...");
       
-      // Request signature from the user
       const signature = await web3.eth.personal.sign(message, walletAddress, "");
 
-      // Verify the signature on the server
       const verificationResponse = await verifySignature(walletAddress, signature);
 
       if (verificationResponse.data.success) {
@@ -93,7 +98,7 @@ const ConnectWallet = ({ onLogin }) => {
         setWalletAddress(walletAddress);
         localStorage.setItem('walletAddress', walletAddress);
         
-        // Store the session token
+        // Add this line to ensure the token is properly stored
         localStorage.setItem('sessionToken', verificationResponse.data.token);
 
         if (onLogin) {
@@ -114,36 +119,12 @@ const ConnectWallet = ({ onLogin }) => {
     }
   };
 
-  // Handle user logout
   const handleLogout = () => {
     clearSession();
     setIsAuthenticated(false);
     setWalletAddress("");
     setMessage("");
-    navigate('/');
   };
-
-  // Listen for account changes in MetaMask
-  useEffect(() => {
-    if (window.ethereum) {
-      const handleAccountsChanged = (accounts) => {
-        if (accounts.length === 0) {
-          // User has disconnected all accounts
-          handleLogout();
-        } else if (isAuthenticated && accounts[0] !== walletAddress) {
-          // User switched to a different account, log them out
-          handleLogout();
-        }
-      };
-
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      
-      // Clean up the event listener
-      return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-      };
-    }
-  }, [isAuthenticated, walletAddress]);
 
   return (
     <div className="connect-wallet-container">

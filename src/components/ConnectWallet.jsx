@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { ethers } from "ethers";
 import { getNonce, verifySignature, checkAuth, clearSession } from "../utils/api";
 
 const ConnectWallet = ({ onLogin }) => {
@@ -60,32 +61,33 @@ const ConnectWallet = ({ onLogin }) => {
     setLoading(true);
     setMessage("Connecting to wallet...");
     setError("");
-
+  
     try {
-      // Use global Web3 from CDN
-      const web3 = new window.Web3(window.ethereum);
+      // Use ethers.js instead of Web3
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
       
       // Request account access
-      const accounts = await web3.eth.requestAccounts();
-      const walletAddress = accounts[0];
-
+      await provider.send("eth_requestAccounts", []);
+      const walletAddress = await signer.getAddress();
+  
       setMessage(`Wallet connected: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`);
       
       // Get authentication nonce from server
       setMessage("Requesting authentication nonce...");
       const nonceResponse = await getNonce(walletAddress);
       const nonce = nonceResponse.data.nonce;
-
+  
       // Create the message to sign
       const message = `Sign this message to authenticate: ${nonce}`;
       setMessage("Please sign the message in your wallet...");
       
       // Request signature from the user
-      const signature = await web3.eth.personal.sign(message, walletAddress, "");
-
+      const signature = await signer.signMessage(message);
+  
       // Verify the signature on the server
       const verificationResponse = await verifySignature(walletAddress, signature);
-
+  
       if (verificationResponse.data.success) {
         setMessage("Authentication successful!");
         setIsAuthenticated(true);
